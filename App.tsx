@@ -7,9 +7,9 @@ import {
   CheckCircle2, AlertCircle, Calendar, BarChart3
 } from 'lucide-react';
 import { StockLog, LogSectionType, User, SectionData } from './types';
-import DynamicTable from './components/DynamicTable';
-import { exportLogToPDF } from './services/pdfService';
-import { analyzeStockLog } from './services/geminiService';
+import DynamicTable from './DynamicTable';
+import { exportLogToPDF } from './pdfService';
+import { analyzeStockLog } from './geminiService';
 
 const EMPTY_SECTION: SectionData = { columns: [{ id: '1', header: 'Item Name' }, { id: '2', header: 'Quantity' }], rows: [] };
 
