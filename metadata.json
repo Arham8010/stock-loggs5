@@ -1,0 +1,7 @@
+{
+  "name": "StockLog Pro",
+  "description": "A high-efficiency mobile-centric stock management application with dynamic tables, PDF export, and owner-based locking for Dori, Warpin, and Delivery details.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
