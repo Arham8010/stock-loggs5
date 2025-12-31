@@ -1,3 +1,4 @@
+
 import { StockLog, LogSectionType } from "./types";
 
 // Accessing via window because of the external scripts in index.html
@@ -8,11 +9,11 @@ export const exportLogToPDF = (log: StockLog) => {
   
   // Title
   doc.setFontSize(20);
-  doc.text(Stock Log Report - ${log.date}, 14, 20);
+  doc.text(`Stock Log Report - ${log.date}`, 14, 20);
   
   doc.setFontSize(12);
-  doc.text(Author: ${log.author}, 14, 30);
-  doc.text(Status: ${log.isLocked ? 'Locked' : 'Open'}, 14, 37);
+  doc.text(`Author: ${log.author}`, 14, 30);
+  doc.text(`Status: ${log.isLocked ? 'Locked' : 'Open'}`, 14, 37);
 
   let currentY = 50;
 
@@ -53,5 +54,5 @@ export const exportLogToPDF = (log: StockLog) => {
     }
   });
 
-  doc.save(StockLog_${log.date.replace(/\//g, '-')}.pdf);
+  doc.save(`StockLog_${log.date.replace(/\//g, '-')}.pdf`);
 };
