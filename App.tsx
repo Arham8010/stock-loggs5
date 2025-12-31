@@ -6,7 +6,7 @@ import {
   Sparkles, Filter, MoreHorizontal, Copy, X, Users, UserPlus
 } from 'lucide-react';
 import { StockLog, LogSectionType, User, SectionData } from './types';
-import DynamicTable from './components/DynamicTable';
+import DynamicTable from './DynamicTable';
 import { exportLogToPDF } from './pdfService';
 import { analyzeStockLog } from './geminiService';
 
