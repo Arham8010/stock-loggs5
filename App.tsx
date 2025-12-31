@@ -1,15 +1,17 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Plus, Search, FileText, Lock, Unlock, Download, 
   Trash2, User as UserIcon, LogOut, ChevronRight, 
   Sparkles, Filter, MoreHorizontal, Copy, X, Users, UserPlus,
-  CheckCircle2, AlertCircle, Calendar, BarChart3, Clock, TrendingUp
+  CheckCircle2, AlertCircle, Calendar, BarChart3, Clock, TrendingUp,
+  ChevronDown, FileDown, Layers, Image as ImageIcon, File as FileIcon
 } from 'lucide-react';
 import { StockLog, LogSectionType, User, SectionData } from './types';
-import DynamicTable from './DynamicTable';
-import { exportLogToPDF } from './pdfService';
-import { analyzeStockLog } from './geminiService';
+import DynamicTable from './components/DynamicTable';
+import { exportLogToPDF, exportSectionToPDF } from './services/pdfService';
+import { exportElementToImage } from './services/imageService';
+import { analyzeStockLog } from './services/geminiService';
 
 const EMPTY_SECTION: SectionData = { columns: [{ id: '1', header: 'Item Name' }, { id: '2', header: 'Quantity' }], rows: [] };
 
@@ -33,6 +35,9 @@ const App: React.FC = () => {
   const [filterAuthor, setFilterAuthor] = useState('');
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  
+  const exportMenuRef = useRef<HTMLDivElement>(null);
 
   // Load from local storage
   useEffect(() => {
@@ -44,6 +49,17 @@ const App: React.FC = () => {
     
     const savedLogs = localStorage.getItem('stocklog_logs');
     if (savedLogs) setLogs(JSON.parse(savedLogs));
+  }, []);
+
+  // Handle click outside for export menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setShowExportMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -146,9 +162,34 @@ const App: React.FC = () => {
     addToast(log.isLocked ? "Log unlocked" : "Log finalized and locked", "info");
   };
 
-  const handleExport = (log: StockLog) => {
+  const handleFullExport = (log: StockLog) => {
     exportLogToPDF(log);
-    addToast("PDF generated successfully");
+    addToast("Full PDF report exported");
+    setShowExportMenu(false);
+  };
+
+  const handleSectionPdfExport = (log: StockLog, section: LogSectionType) => {
+    exportSectionToPDF(log, section);
+    addToast(`${section} exported as PDF`);
+    setShowExportMenu(false);
+  };
+
+  const handleSectionImageExport = async (log: StockLog, section: LogSectionType) => {
+    const wasDifferent = activeSection !== section;
+    if (wasDifferent) {
+      setActiveSection(section);
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+
+    try {
+      addToast(`Generating image for ${section}...`, 'info');
+      await exportElementToImage('table-capture-area', `${section}_${log.date}`);
+      addToast(`${section} exported as PNG image`);
+    } catch (e) {
+      addToast("Image export failed", "error");
+    }
+    
+    setShowExportMenu(false);
   };
 
   const selectedLog = logs.find(l => l.id === selectedLogId);
@@ -170,8 +211,6 @@ const App: React.FC = () => {
   }, [logs, searchQuery, sortOrder, filterAuthor]);
 
   const latestLogs = useMemo(() => logs.slice(0, 3), [logs]);
-
-  const authorsInLogs = useMemo(() => Array.from(new Set(logs.map(l => l.author))), [logs]);
 
   const handleAiAnalyze = async () => {
     if (!selectedLog) return;
@@ -362,12 +401,6 @@ const App: React.FC = () => {
               </div>
             </div>
           ))}
-          {filteredLogs.length === 0 && (
-            <div className="text-center py-16 opacity-40 grayscale">
-              <FileText size={56} className="mx-auto mb-4 text-slate-300" />
-              <p className="text-sm font-black text-slate-400 uppercase tracking-widest">No entries found</p>
-            </div>
-          )}
         </div>
         
         <div className="p-6 border-t border-slate-100 bg-slate-50/50">
@@ -420,17 +453,76 @@ const App: React.FC = () => {
                 
                 <div className="hidden md:block h-6 w-px bg-slate-200 mx-2"></div>
 
-                <div className="flex bg-slate-50 p-1 rounded-xl">
+                <div className="flex bg-slate-50 p-1 rounded-xl relative" ref={exportMenuRef}>
                   <button 
                     onClick={() => duplicateLog(selectedLog)}
                     className="p-2.5 hover:bg-white hover:shadow-sm rounded-lg text-slate-600 transition-all"
                     title="Template"
                   ><Copy size={20} /></button>
-                  <button 
-                    onClick={() => handleExport(selectedLog)}
-                    className="p-2.5 hover:bg-white hover:shadow-sm rounded-lg text-slate-600 transition-all"
-                    title="Export"
-                  ><Download size={20} /></button>
+                  
+                  <div className="relative">
+                    <button 
+                      onClick={() => setShowExportMenu(!showExportMenu)}
+                      className={`p-2.5 rounded-lg transition-all flex items-center gap-1 ${showExportMenu ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-white hover:shadow-sm text-slate-600'}`}
+                      title="Export Options"
+                    >
+                      <Download size={20} />
+                      <ChevronDown size={14} className={showExportMenu ? 'rotate-180 transition-transform' : 'transition-transform'} />
+                    </button>
+
+                    {/* Enhanced Export Dropdown Menu */}
+                    {showExportMenu && (
+                      <div className="absolute top-full right-0 mt-3 w-80 bg-white/95 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-2xl p-2 z-[70] animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="px-3 py-2 mb-2 border-b border-slate-100">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Daily Export Options</p>
+                        </div>
+                        
+                        <button 
+                          onClick={() => handleFullExport(selectedLog)}
+                          className="w-full flex items-center gap-3 px-3 py-3 hover:bg-blue-50 text-slate-700 hover:text-blue-600 rounded-xl transition-all group"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                            <Layers size={16} />
+                          </div>
+                          <div className="text-left flex-1">
+                            <p className="text-xs font-black">Full Daily Report (PDF)</p>
+                            <p className="text-[9px] text-slate-400 font-bold">Comprehensive combined report</p>
+                          </div>
+                        </button>
+
+                        <div className="my-2 border-t border-slate-50 pt-2 px-3">
+                          <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-2">Separate Section Exports</p>
+                        </div>
+
+                        <div className="space-y-1">
+                          {Object.values(LogSectionType).map((type) => (
+                            <div 
+                              key={type}
+                              className="w-full flex items-center justify-between px-3 py-2 rounded-xl border border-transparent hover:border-slate-100 transition-all"
+                            >
+                              <span className="text-[11px] font-bold text-slate-600">{type}</span>
+                              <div className="flex gap-1">
+                                <button 
+                                  onClick={() => handleSectionPdfExport(selectedLog, type)}
+                                  className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg transition-all"
+                                  title={`Download ${type} PDF`}
+                                >
+                                  <FileIcon size={14} />
+                                </button>
+                                <button 
+                                  onClick={() => handleSectionImageExport(selectedLog, type)}
+                                  className="p-2 hover:bg-emerald-50 text-emerald-600 rounded-lg transition-all"
+                                  title={`Download ${type} PNG`}
+                                >
+                                  <ImageIcon size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {selectedLog.author === currentUser.name && (
@@ -495,7 +587,10 @@ const App: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-200/40 overflow-hidden p-2">
+                <div 
+                  id="table-capture-area" 
+                  className="bg-white rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-200/40 overflow-hidden p-2"
+                >
                    <DynamicTable 
                     data={selectedLog[activeSection]}
                     onChange={(newData) => updateLog({ ...selectedLog, [activeSection]: newData })}
@@ -544,7 +639,6 @@ const App: React.FC = () => {
                 </button>
               </div>
 
-              {/* Latest Team Activity Section */}
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h3 className="text-2xl font-black text-slate-900 flex items-center gap-3 tracking-tight">
@@ -586,7 +680,6 @@ const App: React.FC = () => {
                 )}
               </div>
 
-              {/* Stats / Info Grid */}
               <div className="grid md:grid-cols-2 gap-8">
                 <div className="p-8 bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-[2.5rem] shadow-xl relative overflow-hidden group">
                    <div className="absolute -bottom-10 -right-10 opacity-10 group-hover:rotate-12 transition-transform duration-1000">
@@ -603,7 +696,7 @@ const App: React.FC = () => {
                    </div>
                    <h4 className="text-xl font-black mb-2 flex items-center gap-2 tracking-tight text-blue-800">Export Ready</h4>
                    <p className="text-blue-600/70 text-sm font-medium leading-relaxed">
-                     Select any log from the sidebar to view full details. You can export any team member's log to a professional PDF format for offline reporting.
+                     Select any log from the sidebar to view full details. You can export any team member's log as a professional PDF or high-quality PNG image for each section.
                    </p>
                 </div>
               </div>
