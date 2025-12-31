@@ -4,7 +4,7 @@ import {
   Plus, Search, FileText, Lock, Unlock, Download, 
   Trash2, User as UserIcon, LogOut, ChevronRight, 
   Sparkles, Filter, MoreHorizontal, Copy, X, Users, UserPlus,
-  CheckCircle2, AlertCircle, Calendar, BarChart3
+  CheckCircle2, AlertCircle, Calendar, BarChart3, Clock, TrendingUp
 } from 'lucide-react';
 import { StockLog, LogSectionType, User, SectionData } from './types';
 import DynamicTable from './DynamicTable';
@@ -60,6 +60,15 @@ const App: React.FC = () => {
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 3000);
+  };
+
+  const getUserColor = (name: string) => {
+    const colors = ['bg-blue-500', 'bg-indigo-500', 'bg-violet-500', 'bg-purple-500', 'bg-pink-500', 'bg-rose-500', 'bg-amber-500', 'bg-emerald-500'];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
   };
 
   const handleCreateUser = (e: React.FormEvent<HTMLFormElement>) => {
@@ -160,6 +169,8 @@ const App: React.FC = () => {
       });
   }, [logs, searchQuery, sortOrder, filterAuthor]);
 
+  const latestLogs = useMemo(() => logs.slice(0, 3), [logs]);
+
   const authorsInLogs = useMemo(() => Array.from(new Set(logs.map(l => l.author))), [logs]);
 
   const handleAiAnalyze = async () => {
@@ -169,6 +180,10 @@ const App: React.FC = () => {
     setAiAnalysis(result);
     setIsAnalyzing(false);
     addToast("AI Analysis Complete");
+  };
+
+  const isToday = (dateStr: string) => {
+    return dateStr === new Date().toLocaleDateString();
   };
 
   if (!currentUser) {
@@ -193,8 +208,8 @@ const App: React.FC = () => {
                     className="w-full flex items-center justify-between p-5 bg-slate-50 hover:bg-white hover:shadow-lg hover:shadow-slate-100 border border-slate-100 rounded-2xl transition-all group"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-blue-600 group-hover:border-blue-100 transition-colors">
-                        <UserIcon size={24} />
+                      <div className={`w-12 h-12 rounded-full border-2 border-white shadow-sm flex items-center justify-center text-white font-bold transition-all ${getUserColor(user.name)}`}>
+                        {user.name.charAt(0).toUpperCase()}
                       </div>
                       <span className="font-bold text-slate-700 text-lg">{user.name}</span>
                     </div>
@@ -324,6 +339,11 @@ const App: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <Calendar size={12} className="text-blue-500" />
                     <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.1em]">{log.date}</p>
+                    {isToday(log.date) && (
+                      <span className="flex items-center gap-1 bg-blue-600 text-white text-[9px] px-2 py-0.5 rounded-full font-black animate-pulse">
+                        <TrendingUp size={8} /> NEW
+                      </span>
+                    )}
                   </div>
                   <h3 className="font-bold text-slate-900 flex items-center gap-2 text-lg">
                     {log.author === currentUser.name ? 'My Log' : log.author}
@@ -336,8 +356,8 @@ const App: React.FC = () => {
                     <span className="text-[9px] px-2 py-1 bg-slate-100 text-slate-500 rounded-lg font-black uppercase">Del</span>
                   </div>
                 </div>
-                <div className={`p-2 rounded-full transition-all ${selectedLogId === log.id ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-300 group-hover:bg-slate-100 group-hover:text-slate-400'}`}>
-                  <ChevronRight size={18} />
+                <div className={`w-8 h-8 rounded-full border-2 border-white shadow-sm flex items-center justify-center text-[10px] text-white font-bold ${getUserColor(log.author)}`}>
+                  {log.author.charAt(0).toUpperCase()}
                 </div>
               </div>
             </div>
@@ -352,8 +372,8 @@ const App: React.FC = () => {
         
         <div className="p-6 border-t border-slate-100 bg-slate-50/50">
           <div className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
-            <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center border-2 border-white shadow-sm ring-1 ring-blue-100">
-              <UserIcon size={24} className="text-blue-600" />
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 border-white shadow-sm ring-1 ring-blue-100 text-white font-bold text-xl ${getUserColor(currentUser.name)}`}>
+              {currentUser.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 overflow-hidden">
               <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest leading-none mb-1">Active Profile</p>
@@ -486,15 +506,15 @@ const App: React.FC = () => {
 
               {!canEdit && (
                 <div className="p-8 bg-white border border-slate-200 rounded-[2rem] flex items-center gap-6 text-slate-900 shadow-lg shadow-slate-100">
-                  <div className="p-4 bg-amber-100 rounded-2xl text-amber-600">
-                    <Lock size={32} />
+                  <div className={`p-4 rounded-2xl text-white ${selectedLog.isLocked ? 'bg-amber-500' : 'bg-blue-500'}`}>
+                    {selectedLog.isLocked ? <Lock size={32} /> : <UserIcon size={32} />}
                   </div>
                   <div>
-                    <h5 className="font-black text-xl tracking-tight">Viewing Only</h5>
+                    <h5 className="font-black text-xl tracking-tight">Viewing Mode Only</h5>
                     <p className="text-sm font-medium text-slate-500 mt-1 leading-relaxed">
                       {selectedLog.isLocked 
-                        ? "This entry is finalized. You can duplicate it to start a new editable draft." 
-                        : `This record belongs to ${selectedLog.author}. Records can only be modified by their creators.`}
+                        ? "This record has been finalized by the author. You can view all data, but changes are disabled." 
+                        : `You are viewing a shared entry from ${selectedLog.author}. Only the creator can modify this specific log.`}
                     </p>
                   </div>
                 </div>
@@ -504,21 +524,90 @@ const App: React.FC = () => {
             </main>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-12 bg-white relative overflow-hidden">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(59,130,246,0.05),transparent_50%)]"></div>
-            <div className="w-32 h-32 bg-slate-50 rounded-[2.5rem] flex items-center justify-center mb-10 text-slate-100 border-4 border-slate-50 group transition-all hover:scale-110 hover:rotate-3 shadow-inner relative z-10">
-              <BarChart3 size={64} className="group-hover:text-blue-100 transition-colors" />
+          <div className="flex-1 overflow-y-auto p-6 md:p-12 bg-white relative no-scrollbar">
+            <div className="max-w-4xl mx-auto space-y-12">
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div className="space-y-4">
+                  <div className="w-20 h-20 bg-blue-50 rounded-[2rem] flex items-center justify-center text-blue-600 border-2 border-blue-100 shadow-inner">
+                    <BarChart3 size={40} />
+                  </div>
+                  <div>
+                    <h2 className="text-5xl font-black text-slate-900 tracking-tighter">Team Dashboard</h2>
+                    <p className="text-slate-500 font-bold text-xl mt-2">Welcome back, {currentUser.name}.</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={createNewLog}
+                  className="px-8 py-5 bg-blue-600 text-white rounded-[1.5rem] font-black text-lg hover:bg-blue-700 transition-all shadow-2xl shadow-blue-200 flex items-center gap-3 transform active:scale-95 whitespace-nowrap"
+                >
+                  <Plus size={24} strokeWidth={3} /> Start Today's Log
+                </button>
+              </div>
+
+              {/* Latest Team Activity Section */}
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-2xl font-black text-slate-900 flex items-center gap-3 tracking-tight">
+                    <Clock className="text-blue-600" size={24} /> Recent Team Activity
+                  </h3>
+                  <p className="text-xs font-black uppercase text-slate-400 tracking-widest">Across All Users</p>
+                </div>
+                
+                {latestLogs.length > 0 ? (
+                  <div className="grid md:grid-cols-3 gap-6">
+                    {latestLogs.map(log => (
+                      <div 
+                        key={log.id}
+                        onClick={() => setSelectedLogId(log.id)}
+                        className="p-6 bg-slate-50 border border-slate-100 rounded-[2rem] hover:bg-white hover:shadow-2xl hover:shadow-slate-100 hover:scale-[1.02] transition-all cursor-pointer group"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <div className={`w-10 h-10 rounded-full border-2 border-white shadow-sm flex items-center justify-center text-white font-bold ${getUserColor(log.author)}`}>
+                            {log.author.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{log.date}</span>
+                        </div>
+                        <h4 className="font-black text-slate-800 mb-1">{log.author}'s Log</h4>
+                        <p className="text-xs text-slate-500 font-bold mb-4">Daily stock verification</p>
+                        <div className="flex justify-between items-center">
+                          <span className={`text-[9px] font-black px-2 py-1 rounded-lg ${log.isLocked ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
+                            {log.isLocked ? 'FINALIZED' : 'ACTIVE'}
+                          </span>
+                          <ChevronRight className="text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" size={20} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-20 bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-300">
+                    <TrendingUp size={64} className="mb-4 opacity-20" />
+                    <p className="font-black uppercase tracking-widest">No activity reported yet</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Stats / Info Grid */}
+              <div className="grid md:grid-cols-2 gap-8">
+                <div className="p-8 bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-[2.5rem] shadow-xl relative overflow-hidden group">
+                   <div className="absolute -bottom-10 -right-10 opacity-10 group-hover:rotate-12 transition-transform duration-1000">
+                     <Lock size={160} />
+                   </div>
+                   <h4 className="text-xl font-black mb-2 flex items-center gap-2 tracking-tight">Ownership Policy</h4>
+                   <p className="text-slate-400 text-sm font-medium leading-relaxed">
+                     Every log is visible to the entire team, but only the original author can modify or lock it. This ensures data integrity while maintaining full transparency.
+                   </p>
+                </div>
+                <div className="p-8 bg-blue-50 border border-blue-100 text-blue-900 rounded-[2.5rem] shadow-sm relative overflow-hidden group">
+                  <div className="absolute -bottom-10 -right-10 opacity-10 group-hover:-rotate-12 transition-transform duration-1000">
+                     <TrendingUp size={160} />
+                   </div>
+                   <h4 className="text-xl font-black mb-2 flex items-center gap-2 tracking-tight text-blue-800">Export Ready</h4>
+                   <p className="text-blue-600/70 text-sm font-medium leading-relaxed">
+                     Select any log from the sidebar to view full details. You can export any team member's log to a professional PDF format for offline reporting.
+                   </p>
+                </div>
+              </div>
             </div>
-            <h2 className="text-4xl font-black text-slate-900 mb-4 tracking-tighter relative z-10">Stock Control Dashboard</h2>
-            <p className="text-slate-500 max-w-sm mx-auto font-bold text-lg mb-10 relative z-10">
-              Efficiently track Dori, Warpin, Bheem, and Delivery logs from your mobile or desktop.
-            </p>
-            <button 
-              onClick={createNewLog}
-              className="px-10 py-5 bg-blue-600 text-white rounded-[1.5rem] font-black text-lg hover:bg-blue-700 transition-all shadow-2xl shadow-blue-200 flex items-center gap-3 transform active:scale-95 relative z-10"
-            >
-              <Plus size={24} strokeWidth={3} /> Create Today's Entry
-            </button>
           </div>
         )}
       </div>
