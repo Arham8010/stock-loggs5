@@ -7,8 +7,8 @@ import {
 } from 'lucide-react';
 import { StockLog, LogSectionType, User, SectionData } from './types';
 import DynamicTable from './components/DynamicTable';
-import { exportLogToPDF } from '/pdfService';
-import { analyzeStockLog } from '/geminiService';
+import { exportLogToPDF } from './pdfService';
+import { analyzeStockLog } from './geminiService';
 
 const EMPTY_SECTION: SectionData = { columns: [{ id: '1', header: 'Details' }], rows: [] };
 
