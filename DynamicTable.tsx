@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { SectionData, TableColumn, TableRow } from '../types';
-import { Plus, Trash2, Edit3, Save, ChevronUp, ChevronDown, ArrowUpDown, Columns, Rows, Hash } from 'lucide-react';
+import { Plus, Trash2, Edit3, ChevronUp, ChevronDown, Columns, Rows, Hash, FileText, XCircle } from 'lucide-react';
 
 interface DynamicTableProps {
   data: SectionData;
@@ -19,6 +19,7 @@ const DynamicTable: React.FC<DynamicTableProps> = ({ data, onChange, readOnly })
   const [tempColName, setTempColName] = useState('');
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: '', direction: null });
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const addColumn = () => {
     const newCol: TableColumn = {
@@ -57,6 +58,10 @@ const DynamicTable: React.FC<DynamicTableProps> = ({ data, onChange, readOnly })
     onChange({ ...data, rows: newRows });
   };
 
+  const updateNotes = (value: string) => {
+    onChange({ ...data, notes: value });
+  };
+
   const startEditColumn = (e: React.MouseEvent, col: TableColumn) => {
     e.stopPropagation();
     setEditingColId(col.id);
@@ -82,12 +87,18 @@ const DynamicTable: React.FC<DynamicTableProps> = ({ data, onChange, readOnly })
         delete newValues[colId];
         return { ...row, values: newValues };
       });
-      onChange({ columns: newCols, rows: newRows });
+      onChange({ ...data, columns: newCols, rows: newRows });
     }
   };
 
-  const deleteRow = (rowId: string) => {
-    onChange({ ...data, rows: data.rows.filter(r => r.id !== rowId) });
+  const deleteRow = (rowId: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (confirm('Permanently delete this entire row of data?')) {
+      onChange({ ...data, rows: data.rows.filter(r => r.id !== rowId) });
+    }
   };
 
   const handleSort = (colId: string) => {
@@ -111,11 +122,18 @@ const DynamicTable: React.FC<DynamicTableProps> = ({ data, onChange, readOnly })
     });
   }, [data.rows, sortConfig]);
 
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [data.notes]);
+
   return (
-    <div className="relative w-full">
+    <div className="relative w-full space-y-6">
       <div 
         ref={scrollContainerRef}
-        className="overflow-x-auto no-scrollbar pb-24 md:pb-6 rounded-2xl bg-white"
+        className="overflow-x-auto no-scrollbar rounded-2xl bg-white"
       >
         <table className="min-w-full border-collapse">
           <thead className="bg-slate-50/50">
@@ -185,15 +203,16 @@ const DynamicTable: React.FC<DynamicTableProps> = ({ data, onChange, readOnly })
                       value={row.values[col.id] || ''}
                       onChange={(e) => updateCellValue(row.id, col.id, e.target.value)}
                       readOnly={readOnly}
-                      placeholder={readOnly ? '' : 'Type here...'}
+                      placeholder={readOnly ? '' : '...'}
                     />
                   </td>
                 ))}
                 {!readOnly && (
-                  <td className="px-4 py-2 text-right w-20 sticky right-0 bg-white group-hover:bg-blue-50/20 transition-colors">
+                  <td className="px-4 py-2 text-right w-20 sticky right-0 bg-white group-hover:bg-blue-50/20 transition-colors shadow-[-10px_0_15px_-3px_rgba(0,0,0,0.1)]">
                     <button 
-                      onClick={() => deleteRow(row.id)}
-                      className="p-3 text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100 shadow-sm"
+                      onClick={(e) => deleteRow(row.id, e)}
+                      className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100 flex items-center justify-center mx-auto"
+                      title="Delete Row"
                     >
                       <Trash2 size={18} />
                     </button>
@@ -205,55 +224,68 @@ const DynamicTable: React.FC<DynamicTableProps> = ({ data, onChange, readOnly })
         </table>
         
         {data.rows.length === 0 && (
-          <div className="py-20 text-center">
-            <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-6 text-slate-200 shadow-inner">
-              <Rows size={32} />
-            </div>
-            <p className="text-slate-500 font-bold">This section is currently empty.</p>
+          <div className="py-12 text-center bg-slate-50/30 rounded-b-2xl">
+            <p className="text-slate-400 text-sm font-bold">No table data added yet.</p>
             {!readOnly && (
               <button 
                 onClick={addRow}
-                className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-xl text-xs font-black hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
+                className="mt-4 px-6 py-2 bg-blue-600/10 text-blue-600 rounded-xl text-xs font-black hover:bg-blue-600 hover:text-white transition-all"
               >
-                Insert First Row
+                + Add First Table Row
               </button>
             )}
           </div>
         )}
       </div>
 
-      {/* Touch-First Floating Controls */}
+      <div className="w-full">
+        <textarea
+          ref={textareaRef}
+          value={data.notes || ''}
+          onChange={(e) => updateNotes(e.target.value)}
+          readOnly={readOnly}
+          placeholder={readOnly ? "" : "Tap here to add additional notes or details for this section..."}
+          className={`w-full min-h-[150px] bg-transparent p-4 rounded-xl border-2 border-transparent focus:border-slate-200 focus:outline-none text-slate-700 text-lg leading-relaxed font-medium transition-all resize-none ${readOnly ? 'cursor-default opacity-70' : 'cursor-text'}`}
+        />
+      </div>
+
       {!readOnly && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[80] flex items-center gap-4 md:hidden">
-          <button 
-            onClick={addRow}
-            className="flex items-center gap-3 px-8 py-5 bg-slate-900 text-white rounded-[1.5rem] shadow-2xl shadow-slate-400 font-black active:scale-[0.92] transition-all"
-          >
-            <Rows size={24} strokeWidth={3} />
-            <span>Add Row</span>
-          </button>
-          <button 
-            onClick={addColumn}
-            className="flex items-center gap-3 px-8 py-5 bg-blue-600 text-white rounded-[1.5rem] shadow-2xl shadow-blue-400 font-black active:scale-[0.92] transition-all"
-          >
-            <Columns size={24} strokeWidth={3} />
-            <span>Add Col</span>
-          </button>
+        <div className="fixed bottom-6 right-6 z-[80] md:hidden">
+          <div className="flex flex-col gap-3 items-end">
+            <div className="bg-slate-900/95 backdrop-blur-2xl border border-white/10 p-2 rounded-full flex flex-col gap-3 shadow-2xl scale-110">
+               <button 
+                onClick={addColumn}
+                className="w-12 h-12 flex flex-col items-center justify-center bg-slate-800 text-slate-300 rounded-full active:scale-90 transition-all border border-slate-700"
+                title="Add Column"
+              >
+                <Columns size={16} />
+                <span className="text-[7px] font-black uppercase tracking-tighter mt-1">Col</span>
+              </button>
+              <button 
+                onClick={addRow}
+                className="w-12 h-12 flex flex-col items-center justify-center bg-blue-600 text-white rounded-full active:scale-90 transition-all shadow-lg border border-blue-500"
+                title="Add Row"
+              >
+                <Plus size={18} strokeWidth={3} />
+                <span className="text-[7px] font-black uppercase tracking-tighter mt-1">Row</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       {!readOnly && data.rows.length > 0 && (
-        <div className="hidden md:flex items-center gap-6 mt-6 px-2">
+        <div className="hidden md:flex items-center gap-6 mt-2 px-2">
           <button 
             onClick={addRow}
             className="flex items-center gap-3 px-6 py-3 bg-white text-blue-600 border-2 border-blue-50 rounded-2xl text-sm font-black hover:bg-blue-50 hover:border-blue-100 transition-all shadow-sm"
           >
-            <Plus size={20} strokeWidth={3} /> New Row
+            <Plus size={20} strokeWidth={3} /> New Entry Row
           </button>
           <div className="flex items-center gap-2">
              <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
-             <p className="text-xs text-slate-400 font-black uppercase tracking-widest">
-               {data.rows.length} Active Records • {data.columns.length} Fields
+             <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
+               {data.rows.length} Total Records • Auto-saving Enabled
              </p>
           </div>
         </div>
