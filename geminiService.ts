@@ -10,6 +10,7 @@ export const analyzeStockLog = async (log: StockLog): Promise<string> => {
     Highlight any anomalies or key trends in the Dori, Warpin, Bheem, and Delivery sections.
     
     Log Data:
+    Title: ${log.title || 'Daily Entry'}
     Date: ${log.date}
     Author: ${log.author}
     Sections: ${JSON.stringify({
