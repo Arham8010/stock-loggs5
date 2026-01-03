@@ -19,10 +19,12 @@ export interface TableRow {
 export interface SectionData {
   columns: TableColumn[];
   rows: TableRow[];
+  notes?: string;
 }
 
 export interface StockLog {
   id: string;
+  title: string;
   date: string;
   author: string;
   isLocked: boolean;
